@@ -105,6 +105,11 @@ create table if not exists public.reports (
   created_at timestamptz default now()
 );
 
+-- Stops a user from filing the same report type on the same group more than
+-- once (repeat clicks on "Request removal" / "Report" no longer inflate counts).
+create unique index if not exists idx_reports_unique_user_group_type
+  on public.reports (group_id, reporter_id, type);
+
 -- ROW LEVEL SECURITY
 alter table public.profiles enable row level security;
 alter table public.groups enable row level security;
