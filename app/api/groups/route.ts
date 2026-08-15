@@ -1,104 +1,55 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { moderateGroupSubmission } from "@/lib/groq";
-import { rankGroups } from "@/lib/ranking";
 
-// GET /api/groups?category=memes&search=foo
-export async function GET(req: NextRequest) {
-  const supabase = createClient();
-  const { searchParams } = new URL(req.url);
-  const category = searchParams.get("category");
-  const search = searchParams.get("search");
+const VALID_TYPES = ["full", "broken_invite", "spam", "other"] as const;
+type ReportType = (typeof VALID_TYPES)[number];
 
-  let query = supabase
-    .from("groups")
-    .select("*")
-    .in("status", ["active", "almost_full", "possibly_full"]);
-
-  if (category) {
-    const { data: cat } = await supabase
-      .from("categories")
-      .select("id")
-      .eq("slug", category)
-      .single();
-    if (cat) query = query.eq("category_id", cat.id);
-  }
-
-  if (search) {
-    query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
-  }
-
-  const { data, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ groups: rankGroups(data ?? []) });
-}
-
-// POST /api/groups — register a new group. Runs AI moderation synchronously.
+// POST /api/groups/report  { group_id, type: "full" | "broken_invite" | "spam" | "other", note? }
+// "full" = "request removal" (group's slots are full, ask us to take it down)
+// "broken_invite" = "report" (bad link / doesn't work)
 export async function POST(req: NextRequest) {
   const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    return NextResponse.json({ error: "Login required" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: "Login required" }, { status: 401 });
+
+  const { group_id, type, note } = await req.json();
+  if (!group_id || !VALID_TYPES.includes(type)) {
+    return NextResponse.json({ error: "Invalid report payload" }, { status: 400 });
   }
 
-  const body = await req.json();
-  const { name, invite_link, description, platform = "instagram" } = body;
-
-  if (!name || !invite_link || !description) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-  }
-
-  const admin = createAdminClient();
-
-  const { data: categories } = await admin.from("categories").select("*");
-  const { data: recent } = await admin
-    .from("groups")
-    .select("name")
-    .order("created_at", { ascending: false })
-    .limit(200);
-
-  const moderation = await moderateGroupSubmission({
-    name,
-    description,
-    inviteLink: invite_link,
-    categories: categories ?? [],
-    recentGroupNames: (recent ?? []).map((r) => r.name),
+  const { error: insertError } = await supabase.from("reports").insert({
+    group_id,
+    reporter_id: user.id,
+    type: type as ReportType,
+    note: note ?? null,
   });
+  if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 });
 
-  const matchedCategory = (categories ?? []).find(
-    (c) => c.slug === moderation.category_slug
-  );
+  // Recompute the group's report counters from the reports table (source of
+  // truth), same approach as the vote route. Needs the admin client since
+  // regular users aren't allowed to update groups.report_* via RLS.
+  const admin = createAdminClient();
+  const { count: fullCount } = await admin
+    .from("reports")
+    .select("*", { count: "exact", head: true })
+    .eq("group_id", group_id)
+    .eq("type", "full");
+  const { count: brokenCount } = await admin
+    .from("reports")
+    .select("*", { count: "exact", head: true })
+    .eq("group_id", group_id)
+    .eq("type", "broken_invite");
 
-  const status =
-    moderation.decision === "approve"
-      ? "active"
-      : moderation.decision === "reject"
-      ? "rejected"
-      : "pending"; // manual_review sits in admin queue
-
-  const { data: inserted, error } = await admin
+  await admin
     .from("groups")
-    .insert({
-      owner_id: user.id,
-      platform,
-      name,
-      invite_link,
-      description,
-      ai_description: moderation.ai_description,
-      category_id: matchedCategory?.id ?? null,
-      is_adult: moderation.is_adult,
-      status,
-      ai_flags: moderation.flags,
-      ai_reviewed_at: new Date().toISOString(),
+    .update({
+      report_full_count: fullCount ?? 0,
+      report_broken_count: brokenCount ?? 0,
     })
-    .select()
-    .single();
+    .eq("id", group_id);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ group: inserted, moderation });
+  return NextResponse.json({ ok: true });
 }
