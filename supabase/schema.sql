@@ -38,7 +38,8 @@ insert into public.categories (slug, name, sort_order) values
   ('music', 'Music', 8),
   ('sports', 'Sports', 9),
   ('business', 'Business', 10),
-  ('adult', 'Adult (18+)', 11)
+  ('adult', 'Adult (18+)', 11),
+  ('baka', 'Baka', 12)
 on conflict (slug) do nothing;
 
 -- GROUPS
