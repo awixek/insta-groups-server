@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html.light {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-bg text-white antialiased;
+}
+
+html.light body {
+  @apply bg-white text-slate-900;
+}
+
+.card {
+  @apply bg-surface border border-border rounded-2xl p-4;
+}
+
+html.light .card {
+  @apply bg-white border-slate-200 shadow-sm;
+}
+
+.btn-primary {
+  @apply bg-accent text-white rounded-xl px-4 py-2 font-medium active:scale-95 transition-transform;
+}
+
+.btn-ghost {
+  @apply bg-transparent border border-border text-white rounded-xl px-4 py-2 font-medium active:scale-95 transition-transform;
+}
+
+html.light .btn-ghost {
+  @apply border-slate-300 text-slate-900;
+}
+
+.pill {
+  @apply px-3 py-1.5 rounded-full text-sm whitespace-nowrap border border-border;
+}
+
+.pill-active {
+  @apply bg-accent text-white border-accent;
+}
