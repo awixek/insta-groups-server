@@ -46,11 +46,9 @@ export default async function HomePage({
       {!searchParams.search && randomPicks.length > 0 && (
         <section className="max-w-5xl mx-auto px-4 mt-6">
           <h2 className="text-sm font-medium text-muted mb-2">Discover something new</h2>
-          <div className="flex gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {randomPicks.map((g) => (
-              <div key={g.id} className="min-w-[240px]">
-                <GroupCard group={g} />
-              </div>
+              <GroupCard key={g.id} group={g} />
             ))}
           </div>
         </section>
