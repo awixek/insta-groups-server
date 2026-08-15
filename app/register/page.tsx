@@ -8,11 +8,21 @@ import Footer from "@/components/Footer";
 export default function RegisterPage() {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [inviteLink, setInviteLink] = useState("");
+  const [inviteLink, setInviteLink] = useState("https://");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<null | { status: string; reason?: string }>(null);
   const [error, setError] = useState<string | null>(null);
+
+  function onInviteLinkChange(e: React.ChangeEvent<HTMLInputElement>) {
+    let value = e.target.value;
+    // Instagram links always start with https:// — keep it pre-filled so
+    // people don't submit a bare "instagram.com/..." link and fail moderation.
+    if (!value.startsWith("https://")) {
+      value = "https://";
+    }
+    setInviteLink(value);
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -68,12 +78,14 @@ export default function RegisterPage() {
               />
             </div>
             <div>
-              <label className="text-sm text-muted block mb-1">Invite link</label>
+              <label className="text-sm text-muted block mb-1">
+                Invite link <span className="text-muted">— just paste the rest after https://</span>
+              </label>
               <input
                 required
                 type="url"
                 value={inviteLink}
-                onChange={(e) => setInviteLink(e.target.value)}
+                onChange={onInviteLinkChange}
                 placeholder="https://ig.me/join/..."
                 className="w-full rounded-xl bg-surface border border-border px-3 py-2 outline-none focus:border-accent"
               />
