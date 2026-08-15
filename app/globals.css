@@ -45,3 +45,14 @@ html.light .btn-ghost {
 .pill-active {
   @apply bg-accent text-white border-accent;
 }
+
+/* Header used a fixed dark bg (bg-bg) that never adapted to light mode,
+   so in light mode it stayed dark while the text turned dark too — low
+   contrast. Give it its own class with a light-mode override instead. */
+.site-header {
+  @apply bg-bg/80;
+}
+
+html.light .site-header {
+  @apply bg-white/90 border-slate-200;
+}
