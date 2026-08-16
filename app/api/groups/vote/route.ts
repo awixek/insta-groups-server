@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Login required" }, { status: 401 });
 
   const { group_id, value } = await req.json();
-  if (!group_id || !["up", "down"].includes(value)) {
+  if (!group_id || !["up", "down", "remove"].includes(value)) {
     return NextResponse.json({ error: "Invalid vote payload" }, { status: 400 });
   }
 
@@ -40,6 +40,31 @@ export async function POST(req: NextRequest) {
     .eq("user_id", user.id)
     .eq("group_id", group_id)
     .maybeSingle();
+
+  // Reddit-style un-vote: clicking the arrow you already pressed removes
+  // your vote entirely. Doesn't cost quota (nothing new is being cast).
+  if (value === "remove") {
+    if (existingVote) {
+      await supabase.from("votes").delete().eq("user_id", user.id).eq("group_id", group_id);
+    }
+    const { count: upCount } = await supabase
+      .from("votes")
+      .select("*", { count: "exact", head: true })
+      .eq("group_id", group_id)
+      .eq("value", "up");
+    const { count: downCount } = await supabase
+      .from("votes")
+      .select("*", { count: "exact", head: true })
+      .eq("group_id", group_id)
+      .eq("value", "down");
+
+    await supabase
+      .from("groups")
+      .update({ upvotes: upCount ?? 0, downvotes: downCount ?? 0 })
+      .eq("id", group_id);
+
+    return NextResponse.json({ ok: true, vote: null });
+  }
 
   // Changing an existing vote doesn't cost additional quota; only a brand-new vote does.
   const isNewVote = !existingVote;
@@ -89,5 +114,5 @@ export async function POST(req: NextRequest) {
       .eq("id", user.id);
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, vote: value });
 }
