@@ -6,12 +6,6 @@ import { sanitizeSearchTerm } from "@/lib/search";
 
 const PAGE_SIZE = 20;
 
-// Max group submissions a single user can make in the rate-limit window,
-// to stop spam. Checked against the groups table itself (no extra infra
-// needed) since owner_id + created_at are already tracked there.
-const SUBMIT_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-const SUBMIT_RATE_LIMIT_MAX = 3;
-
 // GET /api/groups?category=memes&search=foo&page=1
 export async function GET(req: NextRequest) {
   const supabase = createClient();
@@ -80,24 +74,6 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Rate limit: block if this user already submitted too many groups
-  // in the last hour.
-  const since = new Date(Date.now() - SUBMIT_RATE_LIMIT_WINDOW_MS).toISOString();
-  const { count: recentSubmissions } = await admin
-    .from("groups")
-    .select("id", { count: "exact", head: true })
-    .eq("owner_id", user.id)
-    .gte("created_at", since);
-
-  if ((recentSubmissions ?? 0) >= SUBMIT_RATE_LIMIT_MAX) {
-    return NextResponse.json(
-      {
-        error: `You can submit up to ${SUBMIT_RATE_LIMIT_MAX} groups per hour. Please try again later.`,
-      },
-      { status: 429 }
-    );
-  }
-
   const { data: categories } = await admin.from("categories").select("*");
   const { data: recent } = await admin
     .from("groups")
@@ -117,12 +93,10 @@ export async function POST(req: NextRequest) {
     (c) => c.slug === moderation.category_slug
   );
 
-  const status =
-    moderation.decision === "approve"
-      ? "active"
-      : moderation.decision === "reject"
-      ? "rejected"
-      : "pending"; // manual_review sits in admin queue
+  // AI can approve a submission outright, but it never rejects one on its
+  // own — anything it's not confident approving goes to the admin queue
+  // (/admin) for a human decision instead of being auto-rejected.
+  const status = moderation.decision === "approve" ? "active" : "pending";
 
   const { data: inserted, error } = await admin
     .from("groups")
