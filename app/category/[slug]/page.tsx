@@ -7,8 +7,35 @@ import GroupCard from "@/components/GroupCard";
 import FloatingRegisterButton from "@/components/FloatingRegisterButton";
 import Footer from "@/components/Footer";
 import type { Group, Category } from "@/lib/types";
+import type { Metadata } from "next";
+import { SITE_NAME } from "@/lib/site";
 
 const PAGE_SIZE = 20;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { slug: string };
+}): Promise<Metadata> {
+  const supabase = createClient();
+  const { data: cat } = await supabase
+    .from("categories")
+    .select("name")
+    .eq("slug", params.slug)
+    .single();
+
+  const categoryName = cat?.name ?? params.slug;
+  const title = `${categoryName} groups — random ${categoryName.toLowerCase()} GC on Instagram`;
+  const description = `Join random ${categoryName.toLowerCase()} Instagram groups and GC. Discover ${categoryName.toLowerCase()} group chats, all AI-moderated, on ${SITE_NAME}.`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `/category/${params.slug}` },
+    openGraph: { title, description, url: `/category/${params.slug}` },
+    twitter: { title, description },
+  };
+}
 
 export default async function CategoryPage({
   params,
@@ -42,6 +69,19 @@ export default async function CategoryPage({
   const ranked = rankGroups((groupsRaw ?? []) as Group[]);
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  let voteMap: Record<string, "up" | "down"> = {};
+  if (user && ranked.length > 0) {
+    const { data: votes } = await supabase
+      .from("votes")
+      .select("group_id, value")
+      .eq("user_id", user.id)
+      .in("group_id", ranked.map((g) => g.id));
+    voteMap = Object.fromEntries((votes ?? []).map((v) => [v.group_id, v.value]));
+  }
+
   return (
     <>
       <Header />
@@ -52,7 +92,7 @@ export default async function CategoryPage({
         <h1 className="text-lg font-semibold mb-4">{cat?.name ?? params.slug}</h1>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-6">
           {ranked.map((g) => (
-            <GroupCard key={g.id} group={g} />
+            <GroupCard key={g.id} group={g} initialVote={voteMap[g.id] ?? null} />
           ))}
           {ranked.length === 0 && (
             <p className="text-muted text-sm">No groups in this category yet.</p>
