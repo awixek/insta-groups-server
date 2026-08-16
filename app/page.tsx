@@ -54,6 +54,25 @@ export default async function HomePage({
   const randomPicks = shuffleGroups(groups).slice(0, 6);
   const ranked = isShuffle ? shuffleGroups(groups) : rankGroups(groups);
 
+  // Look up the current user's votes for the groups on this page, so
+  // GroupCard can show the correct arrow highlighted instead of everyone
+  // seeing a neutral state until they click.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  let voteMap: Record<string, "up" | "down"> = {};
+  if (user) {
+    const visibleIds = Array.from(new Set([...groups, ...randomPicks].map((g) => g.id)));
+    if (visibleIds.length > 0) {
+      const { data: votes } = await supabase
+        .from("votes")
+        .select("group_id, value")
+        .eq("user_id", user.id)
+        .in("group_id", visibleIds);
+      voteMap = Object.fromEntries((votes ?? []).map((v) => [v.group_id, v.value]));
+    }
+  }
+
   function pageHref(targetPage: number) {
     const params = new URLSearchParams();
     if (searchParams.search) params.set("search", searchParams.search);
@@ -72,7 +91,7 @@ export default async function HomePage({
           <h2 className="text-sm font-medium text-muted mb-2">Discover something new</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {randomPicks.map((g) => (
-              <GroupCard key={g.id} group={g} />
+              <GroupCard key={g.id} group={g} initialVote={voteMap[g.id] ?? null} />
             ))}
           </div>
         </section>
@@ -92,7 +111,7 @@ export default async function HomePage({
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-6">
           {ranked.map((g) => (
-            <GroupCard key={g.id} group={g} />
+            <GroupCard key={g.id} group={g} initialVote={voteMap[g.id] ?? null} />
           ))}
           {ranked.length === 0 && (
             <p className="text-muted text-sm">No groups found yet. Be the first to register one!</p>
