@@ -1,4 +1,5 @@
 # InstaGroups AI
+is this good m
 
 AI-moderated directory to discover working Instagram (and future Telegram/Discord)
 chat groups. Built to be run entirely from a phone: GitHub + Vercel + Supabase +
