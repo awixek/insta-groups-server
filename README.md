@@ -87,4 +87,4 @@ supabase/schema.sql  Full DB schema + RLS policies
 - Wire real category icons/images
 - Add report-full / report-broken buttons to `GroupCard`
 - Add rate limiting to `/api/groups` POST (basic spam defense beyond AI review)
-- Add pagination once group count grows past ~100
+- Add pagination once group count grows past ~100 yeah and automatically 
