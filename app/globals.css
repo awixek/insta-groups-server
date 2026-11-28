@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ───────────────────────── Design tokens ─────────────────────────
+   Colours are space-separated RGB triplets so Tailwind can do bg-bg/80 etc.
+   Two independent switches:
+     html.light                → light / dark mode
+     [data-skin="instagram"…]  → page-level skin (backgrounds + surfaces)
+     [data-platform="…"]       → accent colour only (safe to put on a single card)
+*/
+:root {
+  --bg: 10 12 20;
+  --surface: 20 24 36;
+  --border: 40 46 64;
+  --fg: 241 243 249;
+  --muted: 154 163 184;
+  --accent: 99 102 241;
+  --accent-grad: linear-gradient(135deg, #6366f1, #4f46e5);
+  --hero-glow: radial-gradient(60% 60% at 50% 0%, rgb(99 102 241 / 0.22), transparent 70%);
+  color-scheme: dark;
+}
+
+html.light {
+  --bg: 248 249 252;
+  --surface: 255 255 255;
+  --border: 226 230 240;
+  --fg: 15 23 42;
+  --muted: 91 100 117;
+  color-scheme: light;
+}
+
+/* accent per platform */
+[data-platform="instagram"] {
+  --accent: 220 39 67;
+  --accent-grad: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  --hero-glow: radial-gradient(70% 70% at 50% 0%, rgb(220 39 67 / 0.25), rgb(240 148 51 / 0.08) 45%, transparent 75%);
+}
+[data-platform="telegram"] {
+  --accent: 38 165 228;
+  --accent-grad: linear-gradient(135deg, #37aee2, #1e96c8);
+  --hero-glow: radial-gradient(70% 70% at 50% 0%, rgb(38 165 228 / 0.28), transparent 72%);
+}
+[data-platform="discord"] {
+  --accent: 88 101 242;
+  --accent-grad: linear-gradient(135deg, #5865f2, #4752c4);
+  --hero-glow: radial-gradient(70% 70% at 50% 0%, rgb(88 101 242 / 0.3), transparent 72%);
+}
+
+/* page skins: backgrounds/surfaces that echo each platform's own dark/light UI */
+html:not(.light) [data-skin="instagram"] { --bg: 0 0 0; --surface: 18 18 18; --border: 44 44 44; }
+html.light [data-skin="instagram"]       { --bg: 250 250 250; --surface: 255 255 255; --border: 219 219 219; }
+
+html:not(.light) [data-skin="telegram"]  { --bg: 14 22 33; --surface: 23 33 43; --border: 38 51 66; }
+html.light [data-skin="telegram"]        { --bg: 241 246 250; --surface: 255 255 255; --border: 217 227 236; }
+
+html:not(.light) [data-skin="discord"]   { --bg: 30 31 34; --surface: 43 45 49; --border: 63 65 71; }
+html.light [data-skin="discord"]         { --bg: 242 243 245; --surface: 255 255 255; --border: 224 226 230; }
+
+/* ───────────────────────── Base ───────────────────────── */
+body {
+  background: rgb(var(--bg));
+  color: rgb(var(--fg));
+  @apply antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.skin {
+  background: rgb(var(--bg));
+  color: rgb(var(--fg));
+  min-height: 100vh;
+}
+
+:focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 2px;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline-offset: 0;
+}
+
+/* ───────────────────────── Components ───────────────────────── */
+@layer components {
+.input {
+  @apply w-full rounded-xl bg-surface border border-border px-3.5 py-2.5 text-sm outline-none focus:border-accent;
+}
+
+.card {
+  @apply bg-surface border border-border rounded-2xl p-4;
+}
+html.light .card {
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+}
+
+.btn-primary {
+  background: var(--accent-grad);
+  @apply text-white rounded-xl px-4 py-2 font-semibold active:scale-95 transition inline-flex items-center justify-center;
+}
+.btn-primary:hover {
+  filter: brightness(1.06);
+}
+
+.btn-ghost {
+  @apply bg-transparent border border-border text-fg rounded-xl px-4 py-2 font-medium active:scale-95 transition inline-flex items-center justify-center hover:bg-fg/5;
+}
+
+.pill {
+  @apply px-3.5 py-1.5 rounded-full text-sm whitespace-nowrap border border-border bg-surface text-fg/80 transition-colors hover:text-fg;
+}
+.pill-active {
+  background: var(--accent-grad);
+  @apply text-white border-transparent hover:text-white;
+}
+}
+
+.site-header {
+  background: rgb(var(--bg) / 0.85);
+}
+
+
+
+.hero-glow {
+  background-image: var(--hero-glow);
+}
+
+/* text that used hard-coded white in older pages stays readable in light mode */
+html.light .text-white\/90,
+html.light .text-white\/80,
+html.light .hover\:text-white\/80:hover {
+  color: rgb(var(--fg));
+}
+
+/* hide scrollbars on horizontal chip rows */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* subtle fade at the right edge of scrollable chip rows = "there's more" */
+.fade-right {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+}
